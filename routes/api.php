@@ -4,6 +4,19 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\VehiculeController;
 use App\Http\Controllers\Api\ExcursionController;
+use App\Http\Controllers\Api\DocumentVehiculeController;
+use App\Http\Controllers\Api\MaintenanceController;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "api" middleware group. Make something great!
+|
+*/
 
 // Routes PUBLIQUES (sans token)
 Route::post('/register', [AuthController::class, 'register']);
@@ -20,13 +33,29 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Routes pour les véhicules (Actions d'écriture nécessitent un token)
     Route::post('/vehicules', [VehiculeController::class, 'store']);
-    Route::put('/vehicules/{vehicule}', [VehiculeController::class, 'update']);
-    Route::delete('/vehicules/{vehicule}', [VehiculeController::class, 'destroy']);
+    Route::get('/vehicules/{id}', [VehiculeController::class, 'show']);
+    Route::put('/vehicules/{id}', [VehiculeController::class, 'update']);
+    Route::delete('/vehicules/{id}', [VehiculeController::class, 'destroy']);
+
+    // Gestion des documents des véhicules
+    Route::get('/documents/all', [DocumentVehiculeController::class, 'allDocuments']);
+    Route::post('/documents/{id}/renew', [DocumentVehiculeController::class, 'renew']);
+    Route::get('/vehicules/{vehiculeId}/documents', [DocumentVehiculeController::class, 'index']);
+    Route::post('/vehicules/{vehiculeId}/documents', [DocumentVehiculeController::class, 'store']);
+    Route::put('/documents/{id}', [DocumentVehiculeController::class, 'update']);
+    Route::delete('/documents/{id}', [DocumentVehiculeController::class, 'destroy']);
 
     // Routes pour les excursions (Actions d'écriture nécessitent un token)
     Route::post('/excursions', [ExcursionController::class, 'store']);
     Route::put('/excursions/{excursion}', [ExcursionController::class, 'update']);
     Route::delete('/excursions/{excursion}', [ExcursionController::class, 'destroy']);
+    
+    // Gestion de la maintenance des véhicules
+    Route::get('/maintenances/all', [MaintenanceController::class, 'allMaintenances']);
+    Route::get('/vehicules/{vehiculeId}/maintenances', [MaintenanceController::class, 'index']);
+    Route::post('/vehicules/{vehiculeId}/maintenances', [MaintenanceController::class, 'store']);
+    Route::post('/maintenances/{id}/renew', [MaintenanceController::class, 'renew']);
+    Route::post('/maintenances/{id}/receive', [MaintenanceController::class, 'receive']);
+    Route::put('/maintenances/{id}', [MaintenanceController::class, 'update']);
+    Route::delete('/maintenances/{id}', [MaintenanceController::class, 'destroy']);
 });
-
-

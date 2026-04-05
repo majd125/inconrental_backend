@@ -48,7 +48,14 @@ class ExcursionController extends Controller
                 'nombre_personnes_min' => 'required|integer|min:1',
                 'nombre_personnes_max' => 'required|integer|min:1|gte:nombre_personnes_min',
                 'actif' => 'sometimes|boolean',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             ]);
+
+            // Gestion de l'image
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('excursions', 'public');
+                $validated['image'] = $imagePath;
+            }
 
             $excursion = Excursion::create($validated);
 
@@ -128,7 +135,14 @@ class ExcursionController extends Controller
                 'nombre_personnes_min' => 'sometimes|integer|min:1',
                 'nombre_personnes_max' => 'sometimes|integer|min:1',
                 'actif' => 'sometimes|boolean',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             ]);
+
+            // Gestion de l'image
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('excursions', 'public');
+                $validated['image'] = $imagePath;
+            }
 
             $excursion->update($validated);
 

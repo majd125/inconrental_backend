@@ -38,6 +38,14 @@ class VehiculeController extends Controller
     public function store(Request $request)
     {
         try {
+            // Admin Check
+            if (!$request->user() || !$request->user()->is_admin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Accès refusé. Réservé aux administrateurs.'
+                ], 403);
+            }
+
             // Validation des données avec les règles ENUM
             $validated = $request->validate([
                 'marque' => 'required|string|max:255',
@@ -50,7 +58,14 @@ class VehiculeController extends Controller
                 'statut' => 'required|in:disponible,reservé',
                 'prix_base' => 'required|numeric|min:0',
                 'description' => 'nullable|string',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             ]);
+
+            // Gestion de l'image
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('vehicules', 'public');
+                $validated['image'] = $imagePath;
+            }
 
             // Création du véhicule
             $vehicule = Vehicule::create($validated);
