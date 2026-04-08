@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use Illuminate\Support\Facades\Storage;
+
 class Vehicule extends Model
 {
     use HasFactory;
@@ -25,6 +27,7 @@ class Vehicule extends Model
         'statut',
         'prix_base',
         'description',
+        'image',
     ];
 
     /**
@@ -36,6 +39,19 @@ class Vehicule extends Model
         'annee' => 'integer',
         'prix_base' => 'decimal:2',
     ];
+
+    /**
+     * Accessor pour l'URL de l'image
+     */
+    public function getImageUrlAttribute()
+    {
+        if ($this->image) {
+            return Storage::disk('public')->url($this->image);
+        }
+        return null;
+    }
+
+    protected $appends = ['image_url'];
 
     /**
      * Scope pour les véhicules disponibles
@@ -51,5 +67,21 @@ class Vehicule extends Model
     public function scopeParCategorie($query, $categorie)
     {
         return $query->where('categorie', $categorie);
+    }
+
+    /**
+     * Relation avec les documents du véhicule
+     */
+    public function documents()
+    {
+        return $this->hasMany(DocumentVehicule::class);
+    }
+
+    /**
+     * Relation avec les maintenances du véhicule
+     */
+    public function maintenances()
+    {
+        return $this->hasMany(Maintenance::class);
     }
 }
