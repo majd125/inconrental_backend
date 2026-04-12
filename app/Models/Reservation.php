@@ -12,6 +12,7 @@ class Reservation extends Model
     protected $fillable = [
         'utilisateur_id',
         'vehicule_id',
+        'modele',
         'date_debut',
         'date_fin',
         'nb_participants',
@@ -19,7 +20,9 @@ class Reservation extends Model
         'lieu_arrivee',
         'montant_total',
         'statut',
-        'option_chauffeur'
+        'option_chauffeur',
+        'nb_sieges_bebe',
+        'cancelled_by_id'
     ];
 
     protected $casts = [
@@ -43,5 +46,13 @@ class Reservation extends Model
     public function vehicule()
     {
         return $this->belongsTo(Vehicule::class, 'vehicule_id');
+    }
+
+    /**
+     * Get the user who cancelled the reservation.
+     */
+    public function cancelledBy()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_id');
     }
 }

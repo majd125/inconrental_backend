@@ -84,4 +84,34 @@ class Vehicule extends Model
     {
         return $this->hasMany(Maintenance::class);
     }
+
+    /**
+     * Relation avec les réservations du véhicule
+     */
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
+    /**
+     * Surcharge dynamique du statut pour afficher "reservé" en temps réel (aujourd'hui)
+     */
+    public function getStatutAttribute($value)
+    {
+        if ($value === 'maintenance') {
+            return $value;
+        }
+
+        $isRentedToday = $this->reservations()
+            ->where('statut', 'confirme')
+            ->whereDate('date_debut', '<=', now())
+            ->whereDate('date_fin', '>=', now())
+            ->exists();
+
+        if ($isRentedToday) {
+            return 'reservé';
+        }
+
+        return $value;
+    }
 }

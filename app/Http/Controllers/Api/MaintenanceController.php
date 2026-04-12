@@ -102,6 +102,13 @@ class MaintenanceController extends Controller
 
             $maintenance = $vehicule->maintenances()->create($data);
 
+            // Sync vehicle status
+            if ($maintenance->statut === 'en_cours') {
+                $vehicule->update(['statut' => 'maintenance']);
+            } elseif ($maintenance->statut === 'terminé' && $vehicule->statut === 'maintenance') {
+                $vehicule->update(['statut' => 'disponible']);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Maintenance ajoutée avec succès',
@@ -159,6 +166,22 @@ class MaintenanceController extends Controller
 
             $maintenance->update($data);
 
+            // Sync vehicle status
+            $vehicule = $maintenance->vehicule;
+            if ($maintenance->statut === 'en_cours') {
+                $vehicule->update(['statut' => 'maintenance']);
+            } elseif ($maintenance->statut === 'terminé' && $vehicule->statut === 'maintenance') {
+                // Only set back to disponible if no OTHER maintenance is en_cours
+                $otherActive = Maintenance::where('vehicule_id', $vehicule->id)
+                    ->where('statut', 'en_cours')
+                    ->where('id', '!=', $maintenance->id)
+                    ->exists();
+                
+                if (!$otherActive) {
+                    $vehicule->update(['statut' => 'disponible']);
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Maintenance mise à jour avec succès',
@@ -185,7 +208,20 @@ class MaintenanceController extends Controller
                 return response()->json(['success' => false, 'message' => 'Maintenance non trouvée'], 404);
             }
 
+            $vehicule = $maintenance->vehicule;
+            $statusBefore = $maintenance->statut;
             $maintenance->delete();
+
+            // Restore vehicle status if it was in maintenance and no more active maintenances exist
+            if ($statusBefore === 'en_cours') {
+                $stillActive = Maintenance::where('vehicule_id', $vehicule->id)
+                    ->where('statut', 'en_cours')
+                    ->exists();
+                
+                if (!$stillActive && $vehicule->statut === 'maintenance') {
+                    $vehicule->update(['statut' => 'disponible']);
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -280,6 +316,17 @@ class MaintenanceController extends Controller
 
             $maintenance->statut = 'terminé';
             $maintenance->save();
+
+            // Sync vehicle status
+            $vehicule = $maintenance->vehicule;
+            $otherActive = Maintenance::where('vehicule_id', $vehicule->id)
+                ->where('statut', 'en_cours')
+                ->where('id', '!=', $maintenance->id)
+                ->exists();
+            
+            if (!$otherActive) {
+                $vehicule->update(['statut' => 'disponible']);
+            }
 
             return response()->json([
                 'success' => true, 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\VehiculeController;
 use App\Http\Controllers\Api\ExcursionController;
 use App\Http\Controllers\Api\DocumentVehiculeController;
 use App\Http\Controllers\Api\MaintenanceController;
+use App\Http\Controllers\Api\ReservationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -57,5 +58,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/maintenances/{id}/renew', [MaintenanceController::class, 'renew']);
     Route::post('/maintenances/{id}/receive', [MaintenanceController::class, 'receive']);
     Route::put('/maintenances/{id}', [MaintenanceController::class, 'update']);
-    Route::delete('/maintenances/{id}', [MaintenanceController::class, 'destroy']);
+    // Gestion des réservations
+    Route::get('/reservations', [ReservationController::class, 'index']);
+    Route::post('/reservations', [ReservationController::class, 'store']);
+    Route::get('/admin/reservations', [ReservationController::class, 'all']);
+    Route::patch('/reservations/{id}/status', [ReservationController::class, 'updateStatus']);
 });
