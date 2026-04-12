@@ -11,10 +11,31 @@ class VehiculeController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $vehicules = Vehicule::all();
+            $query = Vehicule::query();
+            
+            // Filter by date if start and end are provided
+            $start = $request->query('start');
+            $end = $request->query('end');
+
+            if ($start && $end) {
+                $overlappingVehiculeIds = \App\Models\Reservation::whereNotNull('vehicule_id')
+                    ->where('statut', 'confirme')
+                    ->where(function ($q) use ($start, $end) {
+                        $q->where('date_debut', '<', $end)
+                          ->where('date_fin', '>', $start);
+                    })
+                    ->pluck('vehicule_id');
+                    
+                $query->whereNotIn('id', $overlappingVehiculeIds);
+                
+                // Exclude vehicles in maintenance/garage only when checking dates
+                $query->where('statut', '!=', 'maintenance');
+            }
+
+            $vehicules = $query->get();
             
             return response()->json([
                 'success' => true,
@@ -55,10 +76,10 @@ class VehiculeController extends Controller
                 'categorie' => 'required|in:economique,compacte,berline,suv,luxe,sport',
                 'transmission' => 'required|string|max:255',
                 'carburant' => 'required|string|max:255',
-                'statut' => 'required|in:disponible,reservé',
+                'statut' => 'required|in:disponible,reservé,maintenance',
                 'prix_base' => 'required|numeric|min:0',
                 'description' => 'nullable|string',
-                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'image' => $request->hasFile('image') ? 'image|mimes:jpeg,png,jpg,gif,svg|max:2048' : 'nullable|string',
             ]);
 
             // Gestion de l'image
@@ -148,7 +169,7 @@ class VehiculeController extends Controller
                 'categorie' => 'sometimes|in:economique,compacte,berline,suv,luxe,sport',
                 'transmission' => 'sometimes|string|max:255',
                 'carburant' => 'sometimes|string|max:255',
-                'statut' => 'sometimes|in:disponible,reservé',
+                'statut' => 'sometimes|in:disponible,reservé,maintenance',
                 'prix_base' => 'sometimes|numeric|min:0',
                 'description' => 'nullable|string',
             ]);
