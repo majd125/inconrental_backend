@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\ExcursionController;
 use App\Http\Controllers\Api\DocumentVehiculeController;
 use App\Http\Controllers\Api\MaintenanceController;
 use App\Http\Controllers\Api\ReservationController;
+use App\Http\Controllers\Api\ExcursionReservationController;
+use App\Http\Controllers\Api\TransferReservationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,4 +65,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/reservations', [ReservationController::class, 'store']);
     Route::get('/admin/reservations', [ReservationController::class, 'all']);
     Route::patch('/reservations/{id}/status', [ReservationController::class, 'updateStatus']);
+
+    // Gestion des réservations d'excursions
+    Route::get('/excursion-reservations', [ExcursionReservationController::class, 'index']);
+    Route::post('/excursion-reservations', [ExcursionReservationController::class, 'store']);
+    Route::get('/admin/excursion-reservations', [ExcursionReservationController::class, 'all']);
+    Route::patch('/excursion-reservations/{id}/status', [ExcursionReservationController::class, 'updateStatus']);
+
+    // Gestion des réservations de transferts
+    Route::get('/transfer-reservations', [TransferReservationController::class, 'index']);
+    Route::post('/transfer-reservations', [TransferReservationController::class, 'store']);
+    Route::patch('/transfer-reservations/{id}/confirm', [TransferReservationController::class, 'confirm']);
+    Route::patch('/transfer-reservations/{id}/status', [TransferReservationController::class, 'updateStatus']);
+    
+    Route::get('/admin/transfer-reservations', [TransferReservationController::class, 'all']);
+    Route::patch('/admin/transfer-reservations/{id}/price', [TransferReservationController::class, 'setPrice']);
 });
