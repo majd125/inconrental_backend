@@ -60,7 +60,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/maintenances/{id}/renew', [MaintenanceController::class, 'renew']);
     Route::post('/maintenances/{id}/receive', [MaintenanceController::class, 'receive']);
     Route::put('/maintenances/{id}', [MaintenanceController::class, 'update']);
-    // Gestion des réservations
     Route::get('/reservations', [ReservationController::class, 'index']);
     Route::post('/reservations', [ReservationController::class, 'store']);
     Route::get('/admin/reservations', [ReservationController::class, 'all']);
@@ -80,4 +79,9 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::get('/admin/transfer-reservations', [TransferReservationController::class, 'all']);
     Route::patch('/admin/transfer-reservations/{id}/price', [TransferReservationController::class, 'setPrice']);
+    
+    // New Chauffeur Routes
+    Route::get('/admin/chauffeurs', [TransferReservationController::class, 'getChauffeurs']);
+    Route::patch('/admin/transfer-reservations/{id}/assign-chauffeur', [TransferReservationController::class, 'assignChauffeur']);
+    Route::get('/chauffeur/missions', [TransferReservationController::class, 'chauffeurMissions']);
 });

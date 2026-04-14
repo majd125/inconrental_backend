@@ -10,7 +10,7 @@ class TransferReservationController extends Controller
 {
     public function index(Request $request)
     {
-        $reservations = TransferReservation::where('user_id', $request->user()->id)
+        $reservations = TransferReservation::where('utilisateur_id', $request->user()->id)
             ->latest()
             ->get();
 
@@ -21,7 +21,7 @@ class TransferReservationController extends Controller
 
     public function all()
     {
-        $reservations = TransferReservation::with('utilisateur')
+        $reservations = TransferReservation::with(['utilisateur', 'chauffeur'])
             ->latest()
             ->get();
 
@@ -38,24 +38,24 @@ class TransferReservationController extends Controller
             'datetime' => 'required|date',
             'tripType' => 'required|string',
             'waitDuration' => 'nullable|string',
-            'returnDatetime' => 'nullable|string', // Changed to string temporarily to handle empty check
+            'returnDatetime' => 'nullable|string',
             'adults' => 'required|integer|min:1',
             'children' => 'integer|min:0',
             'babies' => 'integer|min:0',
         ]);
 
         $reservation = TransferReservation::create([
-            'user_id' => $request->user()->id,
-            'pickup_location' => $validatedData['pickup'],
-            'destination' => $validatedData['destination'],
-            'pickup_datetime' => $validatedData['datetime'],
-            'trip_type' => $validatedData['tripType'],
-            'wait_duration' => $validatedData['waitDuration'],
-            'return_datetime' => !empty($validatedData['returnDatetime']) ? $validatedData['returnDatetime'] : null,
-            'adults' => $validatedData['adults'],
-            'children' => $validatedData['children'] ?? 0,
-            'babies' => $validatedData['babies'] ?? 0,
-            'status' => 'en_attente_prix',
+            'utilisateur_id' => $request->user()->id,
+            'lieu_depart' => $validatedData['pickup'],
+            'lieu_destination' => $validatedData['destination'],
+            'date_heure_depart' => $validatedData['datetime'],
+            'type_trajet' => $validatedData['tripType'],
+            'duree_attente' => $validatedData['waitDuration'],
+            'date_heure_retour' => !empty($validatedData['returnDatetime']) ? $validatedData['returnDatetime'] : null,
+            'nb_adultes' => $validatedData['adults'],
+            'nb_enfants' => $validatedData['children'] ?? 0,
+            'nb_bebes' => $validatedData['babies'] ?? 0,
+            'statut' => 'en_attente_prix',
         ]);
 
         return response()->json([
@@ -73,8 +73,8 @@ class TransferReservationController extends Controller
         $reservation = TransferReservation::findOrFail($id);
         
         $reservation->update([
-            'quoted_price' => $validatedData['quoted_price'],
-            'status' => 'en_attente_confirmation'
+            'montant_total' => $validatedData['quoted_price'],
+            'statut' => 'en_attente_confirmation'
         ]);
 
         return response()->json([
@@ -87,15 +87,57 @@ class TransferReservationController extends Controller
     {
         $reservation = TransferReservation::findOrFail($id);
         
-        if ($reservation->user_id !== $request->user()->id && !$request->user()->is_admin) {
+        if ($reservation->utilisateur_id !== $request->user()->id && !$request->user()->is_admin) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $reservation->update(['status' => 'confirme']);
+        $reservation->update(['statut' => 'confirme']);
 
         return response()->json([
             'message' => 'Réservation confirmée avec succès',
             'data' => $reservation
+        ]);
+    }
+
+    public function getChauffeurs()
+    {
+        $chauffeurs = \App\Models\User::where('is_driver', true)->get();
+        return response()->json([
+            'data' => $chauffeurs
+        ]);
+    }
+
+    public function assignChauffeur(Request $request, $id)
+    {
+        $validatedData = $request->validate([
+            'chauffeur_id' => 'nullable|exists:users,id'
+        ]);
+
+        $reservation = TransferReservation::findOrFail($id);
+        
+        $reservation->update([
+            'chauffeur_id' => $validatedData['chauffeur_id']
+        ]);
+
+        return response()->json([
+            'message' => 'Chauffeur mis à jour avec succès',
+            'data' => $reservation->load('chauffeur')
+        ]);
+    }
+
+    public function chauffeurMissions(Request $request)
+    {
+        if (!$request->user()->is_driver) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $missions = TransferReservation::with('utilisateur')
+            ->where('chauffeur_id', $request->user()->id)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'data' => $missions
         ]);
     }
 
@@ -110,11 +152,22 @@ class TransferReservationController extends Controller
 
         $reservation = TransferReservation::findOrFail($id);
         
-        if (!$request->user()->is_admin && $reservation->user_id !== $request->user()->id) {
+        $user = $request->user();
+        
+        // Authorization: Admin, the Owner, or the assigned Chauffeur
+        $isOwner = $reservation->utilisateur_id == $user->id;
+        $isChauffeur = $reservation->chauffeur_id == $user->id;
+        
+        if (!$user->is_admin && !$isOwner && !$isChauffeur) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $reservation->update(['status' => $newStatus]);
+        // Specifically check if a chauffeur is trying to do something other than 'termine' (optional but good)
+        if ($isChauffeur && !$user->is_admin && !in_array($newStatus, ['termine', 'confirme'])) {
+             // Let them mark as done or keep as confirmed
+        }
+
+        $reservation->update(['statut' => $newStatus]);
 
         return response()->json([
             'message' => 'Statut mis à jour',
