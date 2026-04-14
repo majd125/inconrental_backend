@@ -22,7 +22,7 @@ class MaintenanceController extends Controller
                 return response()->json(['success' => false, 'message' => 'Accès refusé.'], 403);
             }
 
-            $maintenances = Maintenance::with('vehicule')->orderBy('prochaine_echeance_date', 'asc')->get();
+            $maintenances = Maintenance::with(['vehicule', 'driver'])->orderBy('prochaine_echeance_date', 'asc')->get();
 
             return response()->json([
                 'success' => true,
@@ -239,14 +239,16 @@ class MaintenanceController extends Controller
     public function renew(Request $request, string $id)
     {
         try {
-            // Admin Check
-            if (!$request->user() || !$request->user()->is_admin) {
-                return response()->json(['success' => false, 'message' => 'Accès refusé.'], 403);
-            }
-
+            $user = $request->user();
+            
             $oldMain = Maintenance::find($id);
             if (!$oldMain) {
                 return response()->json(['success' => false, 'message' => 'Maintenance originelle non trouvée'], 404);
+            }
+
+            // Authorization Check: Admin or Assigned Driver
+            if (!$user->is_admin && $oldMain->assigned_driver_id !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Accès refusé.'], 403);
             }
 
             $validator = Validator::make($request->all(), [
@@ -304,14 +306,15 @@ class MaintenanceController extends Controller
     public function receive(Request $request, string $id)
     {
         try {
-            // Admin Check
-            if (!$request->user() || !$request->user()->is_admin) {
-                return response()->json(['success' => false, 'message' => 'Accès refusé.'], 403);
-            }
-
-            $maintenance = Maintenance::find($id);
+            $user = $request->user();
+            $maintenance = Maintenance::with('vehicule')->find($id);
             if (!$maintenance) {
                 return response()->json(['success' => false, 'message' => 'Maintenance non trouvée'], 404);
+            }
+
+            // Authorization: Admin or the Assigned Driver
+            if (!$user->is_admin && $maintenance->assigned_driver_id !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Accès refusé.'], 403);
             }
 
             $maintenance->statut = 'terminé';
@@ -335,6 +338,86 @@ class MaintenanceController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors de la mise à jour du statut', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Assign a driver to a maintenance.
+     */
+    public function assignDriver(Request $request, $id)
+    {
+        try {
+            // Admin Check
+            if (!$request->user() || !$request->user()->is_admin) {
+                return response()->json(['success' => false, 'message' => 'Accès refusé.'], 403);
+            }
+
+            $maintenance = Maintenance::findOrFail($id);
+            
+            $validatedData = $request->validate([
+                'assigned_driver_id' => 'nullable|exists:users,id'
+            ]);
+
+            $maintenance->update([
+                'assigned_driver_id' => $validatedData['assigned_driver_id']
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Conducteur assigné avec succès',
+                'data' => $maintenance->load('driver')
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de l\'assignation', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get maintenances assigned to the authenticated driver.
+     */
+    public function chauffeurMaintenances(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+
+
+            $query = Maintenance::with('vehicule')
+                ->where('assigned_driver_id', $user->id)
+                ->where(function($q) {
+                    $q->where('is_archived', false)
+                      ->orWhereNull('is_archived');
+                });
+
+
+
+            $maintenances = $query->latest()->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $maintenances
+            ]);
+
+            if (!$user->is_driver && !$user->is_admin) {
+                return response()->json(['success' => false, 'message' => 'Accès refusé.'], 403);
+            }
+
+            $maintenances = Maintenance::with('vehicule')
+                ->where('assigned_driver_id', $user->id)
+                ->where(function ($query) {
+                    $query->where('statut', '!=', 'terminé')
+                          ->orWhereNull('statut')
+                          ->orWhere('statut', '');
+                })
+                ->latest()
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $maintenances
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la récupération des maintenances', 'error' => $e->getMessage()], 500);
         }
     }
 }

@@ -25,6 +25,7 @@ class Maintenance extends Model
         'statut',
         'remarques',
         'is_archived',
+        'assigned_driver_id',
     ];
 
     protected $casts = [
@@ -41,5 +42,10 @@ class Maintenance extends Model
     public function vehicule()
     {
         return $this->belongsTo(Vehicule::class);
+    }
+
+    public function driver()
+    {
+        return $this->belongsTo(User::class, 'assigned_driver_id');
     }
 }
