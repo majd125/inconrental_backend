@@ -84,4 +84,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/chauffeurs', [TransferReservationController::class, 'getChauffeurs']);
     Route::patch('/admin/transfer-reservations/{id}/assign-chauffeur', [TransferReservationController::class, 'assignChauffeur']);
     Route::get('/chauffeur/missions', [TransferReservationController::class, 'chauffeurMissions']);
+    
+    // Driver Maintenance Routes
+    Route::patch('/maintenances/{id}/assign-driver', [MaintenanceController::class, 'assignDriver']);
+    Route::get('/chauffeur/maintenances', [MaintenanceController::class, 'chauffeurMaintenances']);
 });
