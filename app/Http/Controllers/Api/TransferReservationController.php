@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\TransferReservation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TransferReservationController extends Controller
 {
@@ -99,9 +100,35 @@ class TransferReservationController extends Controller
         ]);
     }
 
-    public function getChauffeurs()
+    public function getChauffeurs(Request $request)
     {
+        $reservationId = $request->query('reservation_id');
         $chauffeurs = \App\Models\User::where('is_driver', true)->get();
+
+        if ($reservationId) {
+            $reservation = TransferReservation::findOrFail($reservationId);
+            $startTime = $reservation->date_heure_depart;
+            
+            // Assume 2 hour window if no return time is set
+            $endTime = $reservation->date_heure_retour ?: date('Y-m-d H:i:s', strtotime($startTime . ' + 2 hours'));
+
+            // Find busy chauffeurs (already assigned to overlapping missions)
+            $busyChauffeurIds = TransferReservation::where('id', '!=', $reservationId)
+                ->whereNotNull('chauffeur_id')
+                ->whereNotIn('statut', ['annule', 'en_attente_prix'])
+                ->where(function ($q) use ($startTime, $endTime) {
+                    $q->where('date_heure_depart', '<', $endTime)
+                      ->where(\DB::raw('COALESCE(date_heure_retour, DATE_ADD(date_heure_depart, INTERVAL 2 HOUR))'), '>', $startTime);
+                })
+                ->pluck('chauffeur_id')
+                ->toArray();
+
+            $chauffeurs->map(function($c) use ($busyChauffeurIds) {
+                $c->is_busy = in_array($c->id, $busyChauffeurIds);
+                return $c;
+            });
+        }
+
         return response()->json([
             'data' => $chauffeurs
         ]);
@@ -115,6 +142,27 @@ class TransferReservationController extends Controller
 
         $reservation = TransferReservation::findOrFail($id);
         
+        if ($validatedData['chauffeur_id']) {
+            $startTime = $reservation->date_heure_depart;
+            $endTime = $reservation->date_heure_retour ?: date('Y-m-d H:i:s', strtotime($startTime . ' + 2 hours'));
+
+            // Final check on availability
+            $isBusy = TransferReservation::where('id', '!=', $id)
+                ->where('chauffeur_id', $validatedData['chauffeur_id'])
+                ->whereNotIn('statut', ['annule', 'en_attente_prix'])
+                ->where(function ($q) use ($startTime, $endTime) {
+                    $q->where('date_heure_depart', '<', $endTime)
+                      ->where(\DB::raw('COALESCE(date_heure_retour, DATE_ADD(date_heure_depart, INTERVAL 2 HOUR))'), '>', $startTime);
+                })
+                ->exists();
+
+            if ($isBusy) {
+                return response()->json([
+                    'message' => 'Ce chauffeur a déjà une mission prévue à cette heure.'
+                ], 422);
+            }
+        }
+
         $reservation->update([
             'chauffeur_id' => $validatedData['chauffeur_id']
         ]);
