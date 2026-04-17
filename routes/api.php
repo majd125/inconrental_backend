@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\MaintenanceController;
 use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\ExcursionReservationController;
 use App\Http\Controllers\Api\TransferReservationController;
+use App\Http\Controllers\Api\PromotionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -88,4 +89,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Driver Maintenance Routes
     Route::patch('/maintenances/{id}/assign-driver', [MaintenanceController::class, 'assignDriver']);
     Route::get('/chauffeur/maintenances', [MaintenanceController::class, 'chauffeurMaintenances']);
+
+    // Promotions
+    Route::get('/admin/promotions', [PromotionController::class, 'index']);
+    Route::post('/admin/promotions', [PromotionController::class, 'store']);
+    Route::put('/admin/promotions/{id}', [PromotionController::class, 'update']);
+    Route::delete('/admin/promotions/{id}', [PromotionController::class, 'destroy']);
 });

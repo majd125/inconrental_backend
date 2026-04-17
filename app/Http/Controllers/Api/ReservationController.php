@@ -142,7 +142,7 @@ class ReservationController extends Controller
             $days = $start->diffInDays($end);
             if ($days == 0) $days = 1; // Minimum 1 day
 
-            $montant_total = $days * $vehicule->prix_base;
+            $montant_total = $days * $vehicule->prix_final;
 
             // Add baby seat cost ($10/day per seat)
             if ($request->has('nb_sieges_bebe') && $request->nb_sieges_bebe > 0) {
