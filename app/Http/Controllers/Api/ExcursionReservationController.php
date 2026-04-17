@@ -53,7 +53,7 @@ class ExcursionReservationController extends Controller
         }
 
         // Calculate price (logic from frontend)
-        $price_per_person = $excursion->prix_par_personne;
+        $price_per_person = $excursion->prix_final;
         $total_price = ($price_per_person * $validatedData['nb_adultes']) +
                        ($price_per_person * 0.8 * ($validatedData['nb_enfants'] ?? 0)) +
                        ($price_per_person * 0.5 * ($validatedData['nb_bebes'] ?? 0));
