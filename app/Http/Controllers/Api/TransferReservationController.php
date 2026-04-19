@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\TransferReservation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ReservationConfirmed;
+use Carbon\Carbon;
 
 class TransferReservationController extends Controller
 {
@@ -92,7 +95,27 @@ class TransferReservationController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $oldStatut = $reservation->statut;
         $reservation->update(['statut' => 'confirme']);
+
+        // Send Email if Confirmed and previously not
+        if ($oldStatut !== 'confirme') {
+            $reservation->load('utilisateur');
+            $user = $reservation->utilisateur;
+            if ($user && $user->email) {
+                $details = [
+                    'Trajet' => $reservation->lieu_depart . ' -> ' . $reservation->lieu_destination,
+                    'Date de départ' => Carbon::parse($reservation->date_heure_depart)->format('d/m/Y H:i'),
+                    'Type de trajet' => $reservation->type_trajet,
+                    'Prix' => $reservation->montant_total ? $reservation->montant_total . ' €' : 'Sur devis',
+                ];
+                try {
+                    Mail::to($user->email)->send(new ReservationConfirmed('Transfert Privé', $details));
+                } catch (\Exception $e) {
+                    \Log::error("Failed to send email: " . $e->getMessage());
+                }
+            }
+        }
 
         return response()->json([
             'message' => 'Réservation confirmée avec succès',
@@ -215,7 +238,27 @@ class TransferReservationController extends Controller
              // Let them mark as done or keep as confirmed
         }
 
+        $oldStatut = $reservation->statut;
         $reservation->update(['statut' => $newStatus]);
+
+        // Send Email if Confirmed and previously not
+        if ($newStatus === 'confirme' && $oldStatut !== 'confirme') {
+            $reservation->load('utilisateur');
+            $user = $reservation->utilisateur;
+            if ($user && $user->email) {
+                $details = [
+                    'Trajet' => $reservation->lieu_depart . ' -> ' . $reservation->lieu_destination,
+                    'Date de départ' => Carbon::parse($reservation->date_heure_depart)->format('d/m/Y H:i'),
+                    'Type de trajet' => $reservation->type_trajet,
+                    'Prix' => $reservation->montant_total ? $reservation->montant_total . ' €' : 'Sur devis',
+                ];
+                try {
+                    Mail::to($user->email)->send(new ReservationConfirmed('Transfert Privé', $details));
+                } catch (\Exception $e) {
+                    \Log::error("Failed to send email: " . $e->getMessage());
+                }
+            }
+        }
 
         return response()->json([
             'message' => 'Statut mis à jour',
