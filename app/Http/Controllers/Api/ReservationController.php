@@ -7,6 +7,8 @@ use App\Models\Reservation;
 use App\Models\Vehicule;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ReservationConfirmed;
 
 class ReservationController extends Controller
 {
@@ -240,6 +242,8 @@ class ReservationController extends Controller
                 $reservation->cancelled_by_id = $user->id;
             }
             
+            $oldStatut = $reservation->statut;
+            
             // Confirmation logic: check availability and assign a concrete vehicle
             if ($request->statut === 'confirme' && $reservation->statut !== 'confirme') {
                 if (is_null($reservation->vehicule_id)) {
@@ -275,6 +279,26 @@ class ReservationController extends Controller
 
             $reservation->statut = $request->statut;
             $reservation->save();
+
+            // Send Email if Confirmed and previously not
+            if ($request->statut === 'confirme' && $oldStatut !== 'confirme') {
+                $reservation->load(['user', 'vehicule']);
+                $userData = $user ?? $reservation->user;
+                if ($userData && $userData->email) {
+                    $details = [
+                        'Modèle de voiture' => $reservation->modele,
+                        'Lieu de départ' => $reservation->lieu_depart,
+                        'Date de départ' => Carbon::parse($reservation->date_debut)->format('d/m/Y H:i'),
+                        'Date de retour' => Carbon::parse($reservation->date_fin)->format('d/m/Y H:i'),
+                        'Immatriculation' => $reservation->vehicule ? $reservation->vehicule->immatriculation : 'Sera communiquée ultérieurement',
+                    ];
+                    try {
+                        Mail::to($userData->email)->send(new ReservationConfirmed('Location de Voiture', $details));
+                    } catch (\Exception $e) {
+                        \Log::error("Failed to send email: " . $e->getMessage());
+                    }
+                }
+            }
 
             return response()->json([
                 'success' => true,

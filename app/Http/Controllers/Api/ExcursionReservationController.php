@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ReservationConfirmed;
+use Carbon\Carbon;
 
 class ExcursionReservationController extends Controller
 {
@@ -89,7 +92,28 @@ class ExcursionReservationController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $oldStatut = $reservation->statut;
         $reservation->update(['statut' => $validatedData['statut']]);
+
+        // Send Email if Confirmed and previously not
+        if ($validatedData['statut'] === 'confirme' && $oldStatut !== 'confirme') {
+            $reservation->load(['excursion', 'utilisateur']);
+            $user = $reservation->utilisateur;
+            if ($user && $user->email) {
+                $details = [
+                    'Excursion' => $reservation->excursion ? $reservation->excursion->titre : 'Excursion',
+                    'Lieu de départ' => $reservation->lieu_depart,
+                    'Date' => Carbon::parse($reservation->date_reservation)->format('d/m/Y'),
+                    'Participants' => ($reservation->nb_adultes + $reservation->nb_enfants + $reservation->nb_bebes) . ' personne(s)',
+                    'Montant total' => $reservation->montant_total . ' €',
+                ];
+                try {
+                    Mail::to($user->email)->send(new ReservationConfirmed('Excursion', $details));
+                } catch (\Exception $e) {
+                    \Log::error("Failed to send email: " . $e->getMessage());
+                }
+            }
+        }
 
         return response()->json([
             'message' => 'Statut mis à jour avec succès',
