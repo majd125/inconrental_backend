@@ -291,6 +291,7 @@ class ReservationController extends Controller
                         'Date de départ' => Carbon::parse($reservation->date_debut)->format('d/m/Y H:i'),
                         'Date de retour' => Carbon::parse($reservation->date_fin)->format('d/m/Y H:i'),
                         'Immatriculation' => $reservation->vehicule ? $reservation->vehicule->immatriculation : 'Sera communiquée ultérieurement',
+                        'Montant total' => round($reservation->montant_total) . ' TND',
                     ];
                     try {
                         Mail::to($userData->email)->send(new ReservationConfirmed('Location de Voiture', $details));

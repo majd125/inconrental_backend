@@ -105,7 +105,7 @@ class ExcursionReservationController extends Controller
                     'Lieu de départ' => $reservation->lieu_depart,
                     'Date' => Carbon::parse($reservation->date_reservation)->format('d/m/Y'),
                     'Participants' => ($reservation->nb_adultes + $reservation->nb_enfants + $reservation->nb_bebes) . ' personne(s)',
-                    'Montant total' => $reservation->montant_total . ' €',
+                    'Montant total' => round($reservation->montant_total) . ' TND',
                 ];
                 try {
                     Mail::to($user->email)->send(new ReservationConfirmed('Excursion', $details));
