@@ -107,7 +107,7 @@ class TransferReservationController extends Controller
                     'Trajet' => $reservation->lieu_depart . ' -> ' . $reservation->lieu_destination,
                     'Date de départ' => Carbon::parse($reservation->date_heure_depart)->format('d/m/Y H:i'),
                     'Type de trajet' => $reservation->type_trajet,
-                    'Prix' => $reservation->montant_total ? $reservation->montant_total . ' €' : 'Sur devis',
+                    'Prix' => $reservation->montant_total ? round($reservation->montant_total) . ' TND' : 'Sur devis',
                 ];
                 try {
                     Mail::to($user->email)->send(new ReservationConfirmed('Transfert Privé', $details));

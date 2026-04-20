@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\PromotionController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/vehicules', [VehiculeController::class, 'index']);
+Route::get('/vehicules/disponibles', [VehiculeController::class, 'disponibles']);
 Route::get('/vehicules/{vehicule}', [VehiculeController::class, 'show']);
 Route::get('/excursions', [ExcursionController::class, 'index']);
 Route::get('/excursions/{excursion}', [ExcursionController::class, 'show']);
