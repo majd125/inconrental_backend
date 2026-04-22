@@ -35,6 +35,7 @@ Route::get('/excursions/{excursion}', [ExcursionController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::put('/user/profile', [AuthController::class, 'updateProfile']);
 
     // Routes pour les véhicules (Actions d'écriture nécessitent un token)
     Route::post('/vehicules', [VehiculeController::class, 'store']);
