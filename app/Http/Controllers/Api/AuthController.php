@@ -49,7 +49,7 @@ class AuthController extends Controller
             'token' => $token
         ], 201);
     }
-// CONNEXION// CONNEXION// CONNEXION// CONNEXION
+
     // CONNEXION
     public function login(Request $request)
     {
@@ -97,6 +97,46 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'user' => $request->user()
+        ]);
+    }
+
+    // MISE À JOUR DU PROFIL
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'telephone' => ['nullable', 'string', 'max:20'],
+            'adresse' => ['nullable', 'string'],
+            'ville' => ['nullable', 'string', 'max:255'],
+            'numero_permis' => ['nullable', 'string', 'max:50'],
+            'date_naissance' => ['nullable', 'date'],
+            'current_password' => ['nullable', 'required_with:new_password'],
+            'new_password' => ['nullable', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        if ($request->filled('new_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Le mot de passe actuel est incorrect.'
+                ], 422);
+            }
+            $user->password = Hash::make($request->new_password);
+        }
+
+        $user->fill($request->only([
+            'name', 'email', 'telephone', 'adresse', 'ville', 'numero_permis', 'date_naissance'
+        ]));
+
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil mis à jour avec succès.',
+            'user' => $user
         ]);
     }
 }
