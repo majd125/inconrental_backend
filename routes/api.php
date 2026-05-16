@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\ExcursionReservationController;
 use App\Http\Controllers\Api\TransferReservationController;
 use App\Http\Controllers\Api\PromotionController;
+use App\Http\Controllers\Api\StatisticsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +36,7 @@ Route::get('/excursions/{excursion}', [ExcursionController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/admin/statistics', [StatisticsController::class, 'index']);
     Route::put('/user/profile', [AuthController::class, 'updateProfile']);
 
     // Routes pour les véhicules (Actions d'écriture nécessitent un token)
