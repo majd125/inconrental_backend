@@ -62,7 +62,29 @@ class StatisticsController extends Controller
         $totalExpenses = \App\Models\Maintenance::sum('cout_total');
         $monthlyExpenses = \App\Models\Maintenance::where('created_at', '>=', $startOfMonth)->sum('cout_total');
 
-        // 6. Recent Activity (Last 5 combined)
+        // 6. Documents & Maintenances Statistics
+        $totalDocuments = \App\Models\DocumentVehicule::count();
+        $urgentDocuments = \App\Models\DocumentVehicule::where('statut', 'validé')
+            ->whereNotNull('date_expiration')
+            ->where('date_expiration', '<=', now()->addDays(30))
+            ->count();
+            
+        $totalMaintenances = \App\Models\Maintenance::where(function($q) {
+            $q->where('is_archived', false)->orWhereNull('is_archived');
+        })->count();
+        $urgentMaintenances = \App\Models\Maintenance::where(function($query) {
+                $query->where('statut', 'en_cours')
+                      ->orWhere(function($q) {
+                          $q->whereNotNull('prochaine_echeance_date')
+                            ->where('prochaine_echeance_date', '<=', now()->addDays(30));
+                      });
+            })
+            ->where(function($q) {
+                $q->where('is_archived', false)->orWhereNull('is_archived');
+            })
+            ->count();
+
+        // 7. Recent Activity (Last 5 combined)
         $recentCar = Reservation::with('user', 'vehicule')->latest()->take(5)->get()->map(function($res) {
             return [
                 'type' => 'car',
@@ -130,6 +152,14 @@ class StatisticsController extends Controller
                 'monthly_expenses' => $monthlyExpenses,
                 'net_profit' => $totalRevenue - $totalExpenses,
                 'monthly_net_profit' => $monthlyRevenue - $monthlyExpenses,
+            ],
+            'documents' => [
+                'total' => $totalDocuments,
+                'urgent' => $urgentDocuments,
+            ],
+            'maintenances' => [
+                'total' => $totalMaintenances,
+                'urgent' => $urgentMaintenances,
             ],
             'recent_activity' => $recentActivity
         ]);
