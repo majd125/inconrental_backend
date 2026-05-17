@@ -13,10 +13,21 @@ class AuthController extends Controller
     // INSCRIPTION
     public function register(Request $request)
     {
+        // First check if email exists to return custom message for implicit accounts
+        if (User::where('email', $request->email)->exists()) {
+            return response()->json([
+                'message' => 'Un compte existe déjà avec cet e-mail. Si vous avez déjà effectué une réservation, votre mot de passe a été automatiquement défini sur votre numéro de CIN.',
+                'errors' => [
+                    'email' => ['Un compte existe déjà avec cet e-mail. Si vous avez déjà effectué une réservation, votre mot de passe a été automatiquement défini sur votre numéro de CIN.']
+                ]
+            ], 422);
+        }
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'cin' => ['required', 'string', 'max:50', 'unique:users'],
             // Tes champs optionnels
             'telephone' => ['nullable', 'string', 'max:20'],
             'adresse' => ['nullable', 'string'],
@@ -29,6 +40,7 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'cin' => $request->cin,
             'telephone' => $request->telephone,
             'adresse' => $request->adresse,
             'ville' => $request->ville,
@@ -108,6 +120,7 @@ class AuthController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'cin' => ['nullable', 'string', 'max:50', 'unique:users,cin,' . $user->id],
             'telephone' => ['nullable', 'string', 'max:20'],
             'adresse' => ['nullable', 'string'],
             'ville' => ['nullable', 'string', 'max:255'],
@@ -128,7 +141,7 @@ class AuthController extends Controller
         }
 
         $user->fill($request->only([
-            'name', 'email', 'telephone', 'adresse', 'ville', 'numero_permis', 'date_naissance'
+            'name', 'email', 'cin', 'telephone', 'adresse', 'ville', 'numero_permis', 'date_naissance'
         ]));
 
         $user->save();
