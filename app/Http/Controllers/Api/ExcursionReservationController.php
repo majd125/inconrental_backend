@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
+use App\Mail\ImplicitAccountCreated;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ReservationConfirmed;
 use Carbon\Carbon;
@@ -35,14 +38,51 @@ class ExcursionReservationController extends Controller
 
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
+        $rules = [
             'excursion_id' => 'required|exists:excursions,id',
             'date_reservation' => 'required|date|after_or_equal:today',
             'lieu_depart' => 'required|string',
             'nb_adultes' => 'required|integer|min:1',
             'nb_enfants' => 'integer|min:0',
             'nb_bebes' => 'integer|min:0',
-        ]);
+        ];
+
+        $user = $request->user('sanctum');
+
+        if (!$user) {
+            $rules['name'] = 'required|string|max:255';
+            $rules['email'] = 'required|email|max:255';
+            $rules['telephone'] = 'required|string|max:20';
+            $rules['cin'] = 'required|string|max:50';
+        }
+
+        $validatedData = $request->validate($rules);
+
+        if (!$user) {
+            // Check if user exists by email
+            $user = User::where('email', $request->email)->first();
+            
+            if (!$user) {
+                // Create implicit account
+                $user = User::create([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'telephone' => $request->telephone,
+                    'cin' => $request->cin,
+                    'password' => Hash::make($request->cin),
+                    'is_admin' => false,
+                    'is_staff' => false,
+                    'is_driver' => false,
+                ]);
+                
+                // Send email notification about implicit account creation
+                try {
+                    Mail::to($user->email)->send(new ImplicitAccountCreated($user, $request->cin));
+                } catch (\Exception $e) {
+                    \Log::error("Failed to send implicit account email: " . $e->getMessage());
+                }
+            }
+        }
 
         $excursion = \App\Models\Excursion::findOrFail($validatedData['excursion_id']);
 
@@ -62,7 +102,7 @@ class ExcursionReservationController extends Controller
                        ($price_per_person * 0.5 * ($validatedData['nb_bebes'] ?? 0));
 
         $reservation = \App\Models\ExcursionReservation::create([
-            'utilisateur_id' => $request->user()?->id,
+            'utilisateur_id' => $user->id,
             'excursion_id' => $validatedData['excursion_id'],
             'date_reservation' => $validatedData['date_reservation'],
             'lieu_depart' => $validatedData['lieu_depart'],

@@ -8,7 +8,10 @@ use App\Models\Vehicule;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
 use App\Mail\ReservationConfirmed;
+use App\Mail\ImplicitAccountCreated;
 
 class ReservationController extends Controller
 {
@@ -98,7 +101,7 @@ class ReservationController extends Controller
     public function store(Request $request)
     {
         try {
-            $validated = $request->validate([
+            $rules = [
                 'vehicule_id' => 'required|exists:vehicules,id',
                 'date_debut' => 'required|date|after_or_equal:today',
                 'date_fin' => 'required|date|after:date_debut',
@@ -106,8 +109,45 @@ class ReservationController extends Controller
                 'lieu_arrivee' => 'nullable|string|max:255',
                 'nb_participants' => 'integer|min:1',
                 'option_chauffeur' => 'boolean',
-                'nb_sieges_bebe' => 'integer|min:0'
-            ]);
+                'nb_sieges_bebe' => 'integer|min:0',
+            ];
+
+            $user = $request->user('sanctum');
+
+            if (!$user) {
+                $rules['name'] = 'required|string|max:255';
+                $rules['email'] = 'required|email|max:255';
+                $rules['telephone'] = 'required|string|max:20';
+                $rules['cin'] = 'required|string|max:50';
+            }
+
+            $validated = $request->validate($rules);
+            
+            if (!$user) {
+                // Check if user exists by email
+                $user = User::where('email', $request->email)->first();
+                
+                if (!$user) {
+                    // Create implicit account
+                    $user = User::create([
+                        'name' => $request->name,
+                        'email' => $request->email,
+                        'telephone' => $request->telephone,
+                        'cin' => $request->cin,
+                        'password' => Hash::make($request->cin),
+                        'is_admin' => false,
+                        'is_staff' => false,
+                        'is_driver' => false,
+                    ]);
+                    
+                    // Send email notification about implicit account creation
+                    try {
+                        Mail::to($user->email)->send(new ImplicitAccountCreated($user, $request->cin));
+                    } catch (\Exception $e) {
+                        \Log::error("Failed to send implicit account email: " . $e->getMessage());
+                    }
+                }
+            }
 
             $vehicule = Vehicule::findOrFail($validated['vehicule_id']);
             
@@ -152,7 +192,7 @@ class ReservationController extends Controller
             }
 
             $reservation = Reservation::create([
-                'utilisateur_id' => $request->user()->id,
+                'utilisateur_id' => $user->id,
                 'vehicule_id' => null,
                 'modele' => $vehicule->modele,
                 'date_debut' => $validated['date_debut'],

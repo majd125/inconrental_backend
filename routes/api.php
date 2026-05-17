@@ -32,6 +32,10 @@ Route::get('/vehicules/{vehicule}', [VehiculeController::class, 'show']);
 Route::get('/excursions', [ExcursionController::class, 'index']);
 Route::get('/excursions/{excursion}', [ExcursionController::class, 'show']);
 
+// Routes Réservations (Ouvertes aux invités)
+Route::post('/reservations', [ReservationController::class, 'store']);
+Route::post('/excursion-reservations', [ExcursionReservationController::class, 'store']);
+
 // Routes PROTÉGÉES (avec token)
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -66,13 +70,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/maintenances/{id}/receive', [MaintenanceController::class, 'receive']);
     Route::put('/maintenances/{id}', [MaintenanceController::class, 'update']);
     Route::get('/reservations', [ReservationController::class, 'index']);
-    Route::post('/reservations', [ReservationController::class, 'store']);
     Route::get('/admin/reservations', [ReservationController::class, 'all']);
     Route::patch('/reservations/{id}/status', [ReservationController::class, 'updateStatus']);
 
     // Gestion des réservations d'excursions
     Route::get('/excursion-reservations', [ExcursionReservationController::class, 'index']);
-    Route::post('/excursion-reservations', [ExcursionReservationController::class, 'store']);
     Route::get('/admin/excursion-reservations', [ExcursionReservationController::class, 'all']);
     Route::patch('/excursion-reservations/{id}/status', [ExcursionReservationController::class, 'updateStatus']);
 
